@@ -1,16 +1,20 @@
 import { promisify } from "util";
-import {exec} from "child_process";
+import { exec } from "child_process";
 
 const execPromise = promisify(exec);
-const YTDLP_EXECUTABLE_PATH = '/root/.local/bin/yt-dlp';
+const YTDLP_EXECUTABLE_PATH = "/root/.local/bin/yt-dlp";
 
 const runCommand = async (command: string[]): Promise<string> => {
   try {
-            console.log(`Attempting to execute: ${YTDLP_EXECUTABLE_PATH} with args: ${JSON.stringify(command)}`); 
+    console.log(
+      `Attempting to execute: ${YTDLP_EXECUTABLE_PATH} with args: ${JSON.stringify(
+        command
+      )}`
+    );
 
-     const { stdout, stderr } = await execPromise(
-            `${YTDLP_EXECUTABLE_PATH} ${command.join(' ')}`
-        );
+    const { stdout, stderr } = await execPromise(
+      `${YTDLP_EXECUTABLE_PATH} ${command.join(" ")}`
+    );
     if (stderr) {
       console.error("stderr: ", stderr);
     }
@@ -24,7 +28,7 @@ const runCommand = async (command: string[]): Promise<string> => {
     throw error;
   }
 };
- // Testing of runCommand 
+// Testing of runCommand
 /**
 (async() => {
   try{
@@ -36,4 +40,4 @@ const runCommand = async (command: string[]): Promise<string> => {
 })();
  */
 
-export default runCommand
+export default runCommand;
