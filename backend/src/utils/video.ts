@@ -2,7 +2,8 @@ import { promisify } from "util";
 import { exec } from "child_process";
 
 const execPromise = promisify(exec);
-const YTDLP_EXECUTABLE_PATH = "/root/.local/bin/yt-dlp";
+const YTDLP_EXECUTABLE_PATH = "./bin/yt-dlp";
+
 
 const runCommand = async (command: string[]): Promise<string> => {
   try {
@@ -29,15 +30,15 @@ const runCommand = async (command: string[]): Promise<string> => {
   }
 };
 // Testing of runCommand
-/**
-(async() => {
-  try{
-    const result = await runCommand('yt-dlp --version')
-    console.log('Command executed successfully.')
-  } catch(error) {
-   console.error('Failed to execute command.') 
+/*
+(async () => {
+  try {
+    const result = await runCommand(["--version"]);
+    console.log("Command executed successfully:\n", result);
+  } catch (error) {
+    console.error("Failed to execute command.");
   }
 })();
- */
+*/
 
 export default runCommand;
