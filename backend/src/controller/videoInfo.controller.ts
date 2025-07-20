@@ -31,6 +31,7 @@ const videoInfo = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Url not found." });
       return;
     }
+    
     const validUrl = isValidUrl(url);
     if (!validUrl) {
       res.status(400).json({ message: "Invalid Url provided." });
@@ -38,28 +39,36 @@ const videoInfo = async (req: Request, res: Response) => {
     }
 
     const cookiesPath = path.join(__dirname, "cookies.txt");
-    const args = [];
+    const ytdlpArgs = ["-J", url];
 
     if (fs.existsSync(cookiesPath)) {
-      args.push("--cookies", cookiesPath);
+      ytdlpArgs.unshift("--cookies", cookiesPath);
     }
 
-    const data = await runCommand(["-J", url], args);
-    const parsedData = JSON.parse(data);
+    try {
+      const data = await runCommand(ytdlpArgs);
+      const parsedData = JSON.parse(data);
 
-    const title = parsedData.title;
-    const duration = parsedData.duration;
-    let thumbnail = parsedData.thumbnail;
+      const title = parsedData.title;
+      const duration = parsedData.duration;
+      let thumbnail = parsedData.thumbnail;
 
-    if (
-      !thumbnail &&
-      parsedData.thumbnails &&
-      parsedData.thumbnails.length > 0
-    ) {
-      thumbnail = parsedData.thumbnails[parsedData.thumbnails.length - 1].url;
-    } else if (!thumbnail) {
-      thumbnail = "https://via.placeholder.com/150";
-    }
+      if (
+        !thumbnail &&
+        parsedData.thumbnails &&
+        parsedData.thumbnails.length > 0
+      ) {
+        thumbnail = parsedData.thumbnails[parsedData.thumbnails.length - 1].url;
+      } else if (!thumbnail) {
+        thumbnail = "https://via.placeholder.com/150";
+      }
+
+      // Check if formats exist
+      if (!parsedData.formats || !Array.isArray(parsedData.formats)) {
+        return res.status(400).json({ 
+          message: "No video formats found for this URL." 
+        });
+      }
 
     const filteredAndMappedFormats = parsedData.formats
       .filter((format: YtDlpRawFormat) => {
@@ -74,67 +83,79 @@ const videoInfo = async (req: Request, res: Response) => {
         let quality: string;
         let type: "video" | "audio" | "video+audio";
 
-        if (format.vcodec !== "none" && format.acodec !== "none") {
-          type = "video+audio";
-          quality = format.height
-            ? `${format.height}p`
-            : format.format_note || format.format_id;
-        } else if (format.vcodec !== "none") {
-          type = "video";
-          quality = format.height
-            ? `${format.height}p (Video-only)`
-            : format.format_note || format.format_id + " (Video-only)";
-        } else if (format.acodec !== "none") {
-          type = "audio";
-          quality = format.abr
-            ? `${Math.round(format.abr)}kbps (Audio)`
-            : format.format_note || format.format_id + " (Audio-only)";
-        } else {
-          type = "video+audio";
-          quality = format.format_note || format.format_id;
-        }
+          if (format.vcodec !== "none" && format.acodec !== "none") {
+            type = "video+audio";
+            quality = format.height
+              ? `${format.height}p`
+              : format.format_note || format.format_id;
+          } else if (format.vcodec !== "none") {
+            type = "video";
+            quality = format.height
+              ? `${format.height}p (Video-only)`
+              : format.format_note || format.format_id + " (Video-only)";
+          } else if (format.acodec !== "none") {
+            type = "audio";
+            quality = format.abr
+              ? `${Math.round(format.abr)}kbps (Audio)`
+              : format.format_note || format.format_id + " (Audio-only)";
+          } else {
+            type = "video+audio";
+            quality = format.format_note || format.format_id;
+          }
 
-        const fileSize = format.filesize || format.filesize_approx || 0;
+          const fileSize = format.filesize || format.filesize_approx || 0;
 
-        return {
-          formatId: format.format_id,
-          extension: format.ext,
-          quality: quality,
-          fileSize: fileSize,
-          type: type,
-        };
-      })
-      .sort((a: VideoFormatForFrontend, b: VideoFormatForFrontend) => {
-        const typeOrder: { [key in VideoFormatForFrontend["type"]]: number } = {
-          "video+audio": 1,
-          video: 2,
-          audio: 3,
-        };
-        if (typeOrder[a.type] !== typeOrder[b.type]) {
-          return typeOrder[a.type] - typeOrder[b.type];
-        }
+          return {
+            formatId: format.format_id,
+            extension: format.ext,
+            quality: quality,
+            fileSize: fileSize,
+            type: type,
+          };
+        })
+        .sort((a: VideoFormatForFrontend, b: VideoFormatForFrontend) => {
+          const typeOrder: { [key in VideoFormatForFrontend["type"]]: number } = {
+            "video+audio": 1,
+            video: 2,
+            audio: 3,
+          };
+          if (typeOrder[a.type] !== typeOrder[b.type]) {
+            return typeOrder[a.type] - typeOrder[b.type];
+          }
 
-        const extractNumber = (str: string) =>
-          parseInt(str.split("p")[0] || str.split("kbps")[0]);
+          const extractNumber = (str: string) =>
+            parseInt(str.split("p")[0] || str.split("kbps")[0]);
 
-        if (a.type === "video" || a.type === "video+audio") {
-          const heightA = extractNumber(a.quality);
-          const heightB = extractNumber(b.quality);
-          if (!isNaN(heightA) && !isNaN(heightB)) return heightB - heightA;
-        } else if (a.type === "audio") {
-          const abrA = extractNumber(a.quality);
-          const abrB = extractNumber(b.quality);
-          if (!isNaN(abrA) && !isNaN(abrB)) return abrB - abrA;
-        }
-        return b.fileSize - a.fileSize;
+          if (a.type === "video" || a.type === "video+audio") {
+            const heightA = extractNumber(a.quality);
+            const heightB = extractNumber(b.quality);
+            if (!isNaN(heightA) && !isNaN(heightB)) return heightB - heightA;
+          } else if (a.type === "audio") {
+            const abrA = extractNumber(a.quality);
+            const abrB = extractNumber(b.quality);
+            if (!isNaN(abrA) && !isNaN(abrB)) return abrB - abrA;
+          }
+          return b.fileSize - a.fileSize;
+        });
+
+      if (filteredAndMappedFormats.length === 0) {
+        return res.status(400).json({ 
+          message: "No suitable video formats found for this URL." 
+        });
+      }
+
+      return res.status(200).json({
+        title,
+        thumbnail,
+        duration,
+        formats: filteredAndMappedFormats,
       });
-
-    res.status(200).json({
-      title,
-      thumbnail,
-      duration,
-      formats: filteredAndMappedFormats,
-    });
+    } catch (parseError) {
+      console.error("Error parsing video data:", parseError);
+      return res.status(500).json({ 
+        message: "Failed to process video information." 
+      });
+    }
   } catch (error: unknown) {
     let messageToClient: string =
       "Internal server error while fetching video info.";
@@ -166,7 +187,7 @@ const videoInfo = async (req: Request, res: Response) => {
       console.error("Unknown Error Type:", error);
     }
 
-    res.status(statusCode).json({ message: messageToClient });
+    return res.status(statusCode).json({ message: messageToClient });
   }
 };
 
@@ -266,38 +287,18 @@ const downloadVideo = async (req: Request, res: Response) => {
     });
   } catch (error: unknown) {
     let messageToClient: string =
-      "Internal server error while fetching video info.";
+      "Internal server error while downloading video.";
     let statusCode: number = 500;
 
-    let stderrContent: string | undefined;
-
-    if (typeof error === "object" && error !== null && "stderr" in error) {
-      const potentialStderr = (error as { stderr: unknown }).stderr;
-      if (typeof potentialStderr === "string") {
-        stderrContent = potentialStderr;
-      }
-    }
-
-    if (stderrContent) {
-      const confirmedStderr: string = stderrContent;
-
-      console.error("yt-dlp STDERR:", confirmedStderr);
-
-      if (
-        confirmedStderr.includes("Unsupported URL") ||
-        confirmedStderr.includes("No video formats found.")
-      ) {
-        messageToClient =
-          "Could not retrieve video information. Unsupported URL or video not found.";
-        statusCode = 400;
-      }
-    } else if (error instanceof Error) {
-      console.error("Standard Error:", error.message, error);
+    if (error instanceof Error) {
+      console.error("Download Error:", error.message, error);
     } else {
-      console.error("Unknown Error Type:", error);
+      console.error("Unknown Download Error Type:", error);
     }
 
-    res.status(statusCode).json({ message: messageToClient });
+    if (!res.headersSent) {
+      return res.status(statusCode).json({ message: messageToClient });
+    }
   }
 };
 
