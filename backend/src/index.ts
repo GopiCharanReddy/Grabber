@@ -11,7 +11,8 @@ const app = express();
 const router = express.Router();
 app.use(express.json())
 app.use(cors({
-  origin: `${process.env.FRONTEND_URL}`
+  origin: `${process.env.FRONTEND_URL}`,
+  credentials: true,
 }))
 
 const PORT: number = parseInt(process.env.PORT || '3000', 10)
