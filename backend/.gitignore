@@ -18,7 +18,6 @@ build/
 *.js # Ignore all .js files (since you're using TypeScript, output .js should be ignored)
 *.js.map # Ignore sourcemap files
 
-bin/yt-dlp 
 # TypeScript cache
 *.tsbuildinfo
 
