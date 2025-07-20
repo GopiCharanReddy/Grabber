@@ -1,20 +1,31 @@
 import { promisify } from "util";
 import { exec } from "child_process";
+import path from "path";
+import fs from "fs";
 
 const execPromise = promisify(exec);
 const YTDLP_EXECUTABLE_PATH = "./bin/yt-dlp";
 
 const runCommand = async (command: string[]): Promise<string> => {
   try {
-    console.log(
-      `Attempting to execute: python3 ${YTDLP_EXECUTABLE_PATH} with args: ${JSON.stringify(
-        command
-      )}`
-    );
+    // Build extraArgs (like --cookies)
+    const extraArgs: string[] = [];
 
-    const { stdout, stderr } = await execPromise(
-      `python3 ${YTDLP_EXECUTABLE_PATH} ${command.join(" ")}`
-    );
+    const cookiesPath = process.env.COOKIES_PATH;
+    if (cookiesPath && fs.existsSync(cookiesPath)) {
+      extraArgs.push("--cookies", cookiesPath);
+    }
+
+    const fullCommand = [
+      "python3",
+      YTDLP_EXECUTABLE_PATH,
+      ...extraArgs,
+      ...command,
+    ].join(" ");
+
+    console.log(`Attempting to execute: ${fullCommand}`);
+
+    const { stdout, stderr } = await execPromise(fullCommand);
 
     if (stderr) {
       console.error("stderr: ", stderr);

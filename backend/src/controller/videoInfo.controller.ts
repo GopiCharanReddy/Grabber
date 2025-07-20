@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction, Router } from "express";
 import { YtDlpRawFormat } from "../types/yt-dlp";
 import runCommand from "../utils/video";
+import fs from "fs";
+import path from "path";
 import { spawn, ExecException } from "child_process";
 
 const isValidUrl = (url: string) => {
@@ -34,7 +36,15 @@ const videoInfo = async (req: Request, res: Response) => {
       res.status(400).json({ message: "Invalid Url provided." });
       return;
     }
-    const data = await runCommand(["-J", url]);
+
+    const cookiesPath = path.join(__dirname, "cookies.txt");
+    const args = [];
+
+    if (fs.existsSync(cookiesPath)) {
+      args.push("--cookies", cookiesPath);
+    }
+
+    const data = await runCommand(["-J", url], args);
     const parsedData = JSON.parse(data);
 
     const title = parsedData.title;
@@ -113,7 +123,7 @@ const videoInfo = async (req: Request, res: Response) => {
           if (!isNaN(heightA) && !isNaN(heightB)) return heightB - heightA;
         } else if (a.type === "audio") {
           const abrA = extractNumber(a.quality);
-          const abrB = extractNumber(a.quality);
+          const abrB = extractNumber(b.quality);
           if (!isNaN(abrA) && !isNaN(abrB)) return abrB - abrA;
         }
         return b.fileSize - a.fileSize;
@@ -185,12 +195,22 @@ const downloadVideo = async (req: Request, res: Response) => {
     );
     res.setHeader("Content-Type", `video/${ext}`);
 
+    const cookiesPath = path.join(__dirname, "cookies.txt");
+
     const ytDlpArgs = [
-      "-f",formatId,
-      "-o","-",
-      "--merge-output-format","mp4",
-      "--",url,
+      "-f",
+      formatId,
+      "-o",
+      "-",
+      "--merge-output-format",
+      "mp4",
+      "--",
+      url,
     ];
+
+    if (fs.existsSync(cookiesPath)) {
+      ytDlpArgs.splice(0, 0, "--cookies", cookiesPath);
+    }
 
     console.log(`Executing yt-dlp command: yt-dlp ${ytDlpArgs.join(" ")}`);
 
