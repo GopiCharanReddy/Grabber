@@ -39,7 +39,7 @@ const videoInfo = async (req: Request, res: Response) => {
     }
 
     const cookiesPath = path.join(__dirname, "cookies.txt");
-    const ytdlpArgs = ["-J", url];
+    const ytdlpArgs = [`-J`, url];
 
     if (fs.existsSync(cookiesPath)) {
       ytdlpArgs.unshift("--cookies", cookiesPath);
@@ -235,7 +235,7 @@ const downloadVideo = async (req: Request, res: Response) => {
 
     console.log(`Executing yt-dlp command: yt-dlp ${ytDlpArgs.join(" ")}`);
 
-    const ytDlpProcess = spawn("yt-dlp", ytDlpArgs);
+    const ytDlpProcess = spawn("python3", ["-m", "yt_dlp", ...ytDlpArgs]);
 
     ytDlpProcess.stdout.pipe(res);
 

@@ -2,7 +2,8 @@ import { promisify } from "util";
 import { exec } from "child_process";
 
 const execPromise = promisify(exec);
-const YTDLP_EXECUTABLE_PATH = "./bin/yt-dlp";
+const YTDLP_EXECUTABLE_PATH = "python3 -m yt_dlp";
+
 
 const runCommand = async (command: string[]): Promise<string> => {
   try {
