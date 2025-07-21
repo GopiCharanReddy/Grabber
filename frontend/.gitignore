@@ -8,38 +8,33 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Dependencies
-node_modules/
-dist/
-dist-ssr/
+node_modules
+dist
+dist-ssr
 *.local
 
 # Environment files
 .env
-.env.*
-!.env.example
-
-# Build files
-*.timestamp-*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
 
 # Vite specific
 .vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-.vite-ssg-dist/
-.vite-ssg-temp/
+.vite-ssg-dist
+.vite-ssg-temp
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea/
+.idea
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Lock files (uncomment if you want to ignore lock files)
-# pnpm-lock.yaml
-# package-lock.json
-# yarn.lock
